@@ -13,7 +13,8 @@ GET   /health/db   controllers.HealthController.dbHealth
 GET     /datasets                 controllers.DatasetController.getAllDatasets
 
 # Dataset APIs
-POST    /dataset/create          controllers.DatasetController.createDataset
-GET     /dataset/:id             controllers.DatasetController.getDatasetById(id: String)
-DELETE  /dataset/:id             controllers.DatasetController.deleteDataset(id: String)
+POST    /api/dataset/v1/create      controllers.DatasetController.createDataset
+GET     /api/dataset/v1/read        controllers.DatasetController.getAllDatasets
+GET     /api/dataset/v1/read/:id    controllers.DatasetController.getDatasetById(id: String)
+DELETE  /api/dataset/v1/delete/:id  controllers.DatasetController.deleteDataset(id: String)
 
