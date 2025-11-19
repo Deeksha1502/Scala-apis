@@ -2,16 +2,23 @@ package services
 
 import javax.inject._
 import db.CassandraConnector
+import utils.RedisConnector
 import models.Dataset
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
+import play.api.libs.json._
 
 @Singleton
-class DatasetService @Inject()(connector: CassandraConnector)(implicit ec: ExecutionContext) {
+class DatasetService @Inject()(
+  connector: CassandraConnector,
+  redisConnector: RedisConnector
+)(implicit ec: ExecutionContext) {
+
+  private val client = redisConnector.client
 
   private val session = connector.getSession
 
-  def createDataset(dataset: Dataset): Future[String] = Future {
+  def createDataset(dataset: Dataset): Future[String] = {
     val query =
       s"""
          |INSERT INTO datasets (id, dataset_schema, router_config, status,
@@ -19,8 +26,12 @@ class DatasetService @Inject()(connector: CassandraConnector)(implicit ec: Execu
          |VALUES ('${dataset.id}', '${dataset.dataset_schema}', '${dataset.router_config}', '${dataset.status}',
          |'${dataset.created_by}', '${dataset.updated_by}', toTimestamp(now()), toTimestamp(now()));
          |""".stripMargin
-    session.execute(query)
-    s"Dataset ${dataset.id} inserted successfully"
+    
+    Future {
+      session.execute(query)
+      cacheOnCreate(dataset) // Cache the created dataset
+      s"Dataset ${dataset.id} inserted successfully"
+    }
   }
 
 
@@ -65,6 +76,48 @@ class DatasetService @Inject()(connector: CassandraConnector)(implicit ec: Execu
     val result = session.execute(query)
     if (result.wasApplied()) s"Dataset with id '$id' deleted successfully"
     else s"No dataset found with id '$id'"
+  }
+
+
+  def getDatasetCached(id: String): Future[Option[Dataset]] = {
+    val key = s"dataset:$id"
+
+    client.get[String](key).flatMap {
+      case Some(jsonString) =>
+        Future.successful(Some(Json.parse(jsonString).as[Dataset]))
+      case None =>
+        getDatasetById(id).map {
+          case Some(ds) =>
+            client.setex(key, 300, Json.toJson(ds).toString())
+            Some(ds)
+          case None => None
+        }
+    }
+  }
+
+  def getAllDatasetsCached(): Future[List[Dataset]] = {
+    val key = "datasets:all"
+
+    client.get[String](key).flatMap {
+      case Some(jsonString) =>
+        Future.successful(Json.parse(jsonString).as[List[Dataset]])
+      case None =>
+        getAllDatasets().map { list =>
+          client.setex(key, 60, Json.toJson(list).toString())
+          list
+        }
+    }
+  }
+
+  def cacheOnCreate(dataset: Dataset): Unit = {
+    val key = s"dataset:${dataset.id}"
+    client.set(key, Json.toJson(dataset).toString())
+    client.del("datasets:all") // clean stale cache for GET ALL
+  }
+
+  def removeFromCache(id: String): Unit = {
+    client.del(s"dataset:$id")
+    client.del("datasets:all")
   }
 
 }

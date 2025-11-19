@@ -38,7 +38,7 @@ object DatasetManagerActor {
 
 
       case GetAllDatasets(replyTo) =>
-        datasetService.getAllDatasets().onComplete {
+        datasetService.getAllDatasetsCached().onComplete {
           case Success(datasets) => replyTo ! AllDatasetsFetched(datasets)
           case Failure(ex)       => replyTo ! ActionFailure(ex.getMessage)
         }
@@ -46,7 +46,7 @@ object DatasetManagerActor {
 
 
       case GetDataset(id, replyTo) =>
-        datasetService.getDatasetById(id).onComplete {
+        datasetService.getDatasetCached(id).onComplete {
           case Success(opt) => replyTo ! DatasetFetched(opt)
           case Failure(ex)  => replyTo ! ActionFailure(ex.getMessage)
         }
@@ -54,7 +54,9 @@ object DatasetManagerActor {
 
       case DeleteDataset(id, replyTo) =>
         datasetService.deleteDatasetById(id).onComplete {
-          case Success(msg) => replyTo ! ActionSuccess(msg)
+          case Success(msg) => 
+            datasetService.removeFromCache(id) 
+            replyTo ! ActionSuccess(msg)
           case Failure(ex)  => replyTo ! ActionFailure(ex.getMessage)
         }
         Behaviors.same

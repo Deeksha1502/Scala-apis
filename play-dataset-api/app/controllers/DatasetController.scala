@@ -23,7 +23,7 @@ class DatasetController @Inject()(
 )(implicit ec: ExecutionContext)
   extends AbstractController(cc) {
 
-  private implicit val system = classicSystem.toTyped
+  private implicit val system: org.apache.pekko.actor.typed.ActorSystem[Nothing] = classicSystem.toTyped
   private val datasetActor: ActorRef[Command] =
     system.systemActorOf(DatasetManagerActor(datasetService), "dataset-manager-actor")
 

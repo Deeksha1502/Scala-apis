@@ -18,6 +18,11 @@ libraryDependencies += "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.2
 
 libraryDependencies ++= Seq(
   guice,
-  "com.datastax.oss" % "java-driver-core" % "4.17.0"
+  "com.datastax.oss" % "java-driver-core" % "4.17.0",
+  "org.apache.pekko" %% "pekko-actor-typed" % "1.0.2",
+  "org.apache.pekko" %% "pekko-actor" % "1.0.2",
+  "com.typesafe.akka" %% "akka-actor" % "2.6.21", // For Redis compatibility
+  "com.github.etaty" %% "rediscala" % "1.9.0"
 )
+
 
